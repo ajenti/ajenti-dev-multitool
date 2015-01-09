@@ -1,0 +1,165 @@
+#!/usr/bin/env python
+import getopt
+import logging
+import os
+import sys
+import subprocess
+import hashlib
+
+
+def find_plugins():
+    if os.path.exists('__init__.py'):
+        yield '.'
+    else:
+        for dir in os.listdir('.'):
+            if os.path.exists(os.path.join(dir, '__init__.py')):
+                yield dir
+
+
+def run_bower(path, cmdline):
+    bower_json = os.path.join(path, 'bower.json')
+    bower_rc = os.path.join(path, '.bowerrc')
+
+    if not os.path.exists(bower_json):
+        logging.warn('Plugin at %s has no bower.json' % path)
+        return
+
+    with open(bower_rc, 'w') as f:
+        f.write('{"directory" : "resources/vendor"}')
+
+    if not os.path.exists(os.path.join(path, 'resources/vendor')):
+        os.makedirs(os.path.join(path, 'resources/vendor'))
+
+    logging.info('Running bower %s in %s' % (cmdline, path))
+    code = subprocess.call('bower -V --allow-root %s' % cmdline, shell=True, cwd=path)
+    if code != 0:
+        logging.error('Bower failed for %s' % path)
+    os.unlink(bower_rc)
+
+
+def run_build(plugin, cache_enabled):
+    cache_path = '/tmp/.ajenti-resource-cache'
+    if not os.path.exists(cache_path):
+        os.makedirs(cache_path)
+
+    def get_hash(name):
+        return hashlib.sha512(name).hexdigest()
+
+    def get_cached(name):
+        if os.path.exists(os.path.join(cache_path, get_hash(name))):
+            return open(os.path.join(cache_path, get_hash(name))).read()
+
+    def get_cached_time(name):
+        if os.path.exists(os.path.join(cache_path, get_hash(name))):
+            return os.stat(os.path.join(cache_path, get_hash(name))).st_mtime
+
+    def set_cached(name, content):
+        open(os.path.join(cache_path, get_hash(name)), 'w').write(content)
+
+    if plugin == '.':
+        mod = __import__('__init__')
+    else:
+        mod = __import__(plugin)
+
+    resources = filter(None, mod.info.resources)
+    if not resources:
+        return
+    logging.info('Building resources for %s' % plugin)
+
+    if not os.path.exists(os.path.join(plugin, 'resources/build')):
+        os.makedirs(os.path.join(plugin, 'resources/build'))
+
+    all_js = ''
+    all_css = ''
+    for resource in resources:
+        path = os.path.join(plugin, resource)
+        if resource.endswith('.coffee'):
+            if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
+                logging.info('Compiling %s' % path)
+                set_cached(path, subprocess.check_output(['coffee', '-p', '-c', path]) + '\n')
+            all_js += get_cached(path)
+        if resource.endswith('.js'):
+            logging.info('Including %s' % path)
+            all_js += open(path).read() + '\n'
+        if resource.endswith('.less'):
+            if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
+                logging.info('Compiling %s' % path)
+                set_cached(path, subprocess.check_output(['lessc', path]) + '\n')
+            all_css += get_cached(path)
+        if resource.endswith('.css'):
+            logging.info('Including %s' % path)
+            all_css += open(path).read() + '\n'
+        
+    with open(os.path.join(plugin, 'resources/build/all.js'), 'w') as f:
+        f.write(all_js)
+    with open(os.path.join(plugin, 'resources/build/all.css'), 'w') as f:
+        f.write(all_css)
+
+
+
+def usage():
+    #General commands
+    #    --create-plugin <name>     - creates a new plugin in a subdirectory
+    print("""
+Usage: %s [options]
+
+Plugin commands (these operate on all plugins found within current directory)
+    --run                      - Run Ajenti with plugins from the current directory
+    --run-dev                  - Run Ajenti in dev mode with plugins from the current directory
+    --bower '<cmdline>'        - Run Bower, e.g. --bower install
+    --build                    - Compile resources
+    --rebuild                  - Force recompile resources
+    """ % sys.argv[0])
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+    sys.path.insert(0, '.')
+
+    try:
+        opts, args = getopt.getopt(
+            sys.argv[1:], 
+            '', 
+            [
+                'run',
+                'run-dev',
+                'bower=',
+                'build',
+                'rebuild',
+            ]
+        )
+    except getopt.GetoptError as e:
+        print(str(e))
+        usage()
+        sys.exit(2)
+
+    for o, a in opts:
+        if o == '--run':
+            subprocess.call([
+                'ajenti-panel',
+                '-v', '--plugins', '.'
+            ])
+            sys.exit(0)
+        if o == '--rundev':
+            subprocess.call([
+                'ajenti-panel',
+                '-v', '--plugins', '.', '--dev'
+            ])
+            sys.exit(0)
+        if o == '--bower':
+            for plugin in find_plugins():
+                run_bower(plugin, a)
+            sys.exit(0)
+        if o == '--build':
+            for plugin in find_plugins():
+                run_build(plugin, True)
+            sys.exit(0)
+        if o == '--rebuild':
+            for plugin in find_plugins():
+                run_build(plugin, False)
+            sys.exit(0)
+        elif o == '--set-platform':
+            ajenti.platform = a
+
+    usage()
+    sys.exit(2)
