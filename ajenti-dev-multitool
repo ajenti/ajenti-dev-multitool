@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 import getopt
+import hashlib
 import logging
 import os
-import sys
 import subprocess
-import hashlib
+import sys
+import yaml
+
+
+yaml.add_multi_constructor('tag:yaml.org,2002:python/object:', lambda a,b,c: None)
 
 
 def find_plugins():
@@ -12,7 +16,7 @@ def find_plugins():
         yield '.'
     else:
         for dir in os.listdir('.'):
-            if os.path.exists(os.path.join(dir, '__init__.py')):
+            if os.path.exists(os.path.join(dir, 'plugin.yml')):
                 yield dir
 
 
@@ -56,12 +60,9 @@ def run_build(plugin, cache_enabled):
     def set_cached(name, content):
         open(os.path.join(cache_path, get_hash(name)), 'w').write(content)
 
-    if plugin == '.':
-        mod = __import__('__init__')
-    else:
-        mod = __import__(plugin)
 
-    resources = filter(None, mod.info.resources)
+    resources = yaml.load(open(os.path.join(plugin, 'plugin.yml')))['resources']
+
     if not resources:
         return
     logging.info('Building resources for %s' % plugin)
