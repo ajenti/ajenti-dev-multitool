@@ -139,7 +139,7 @@ if __name__ == '__main__':
                 'ajenti-panel',
                 '-v', '--plugins', '.'
             ]
-            if o == '--rundev':
+            if o == '--run-dev':
                 cmd += ['--dev']
             try:
                 subprocess.call(cmd)
