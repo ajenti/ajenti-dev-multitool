@@ -5,7 +5,7 @@ from setuptools import find_packages
 
 setup(
     name='ajenti-dev-multitool',
-    version='0.2',
+    version='0.3',
     install_requires=[],
     description='-',
     author='Eugeny Pankov',

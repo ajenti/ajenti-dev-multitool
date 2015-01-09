@@ -134,17 +134,17 @@ if __name__ == '__main__':
         sys.exit(2)
 
     for o, a in opts:
-        if o == '--run':
-            subprocess.call([
+        if o.startswith('--run'):
+            cmd = [
                 'ajenti-panel',
                 '-v', '--plugins', '.'
-            ])
-            sys.exit(0)
-        if o == '--rundev':
-            subprocess.call([
-                'ajenti-panel',
-                '-v', '--plugins', '.', '--dev'
-            ])
+            ]
+            if o == '--rundev':
+                cmd += ['--dev']
+            try:
+                subprocess.call(cmd)
+            except KeyboardInterrupt:
+                pass
             sys.exit(0)
         if o == '--bower':
             for plugin in find_plugins():
