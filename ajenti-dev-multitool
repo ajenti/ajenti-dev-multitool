@@ -8,16 +8,18 @@ import sys
 import yaml
 
 
-yaml.add_multi_constructor('tag:yaml.org,2002:python/object:', lambda a,b,c: None)
+yaml.add_multi_constructor('tag:yaml.org,2002:python/object:', lambda a, b, c: None)
 
 
 def find_plugins():
     if os.path.exists('__init__.py'):
         yield '.'
     else:
-        for dir in os.listdir('.'):
-            if os.path.exists(os.path.join(dir, 'plugin.yml')):
-                yield dir
+        for dp, dn, fn in os.walk('.'):
+            for d in dn:
+                dir = os.path.join(dp, d)
+                if os.path.exists(os.path.join(dir, 'plugin.yml')):
+                    yield dir
 
 
 def run_bower(path, cmdline):
@@ -60,7 +62,6 @@ def run_build(plugin, cache_enabled):
     def set_cached(name, content):
         open(os.path.join(cache_path, get_hash(name)), 'w').write(content)
 
-
     resources = yaml.load(open(os.path.join(plugin, 'plugin.yml')))['resources']
 
     if not resources:
@@ -90,12 +91,11 @@ def run_build(plugin, cache_enabled):
         if resource.endswith('.css'):
             logging.info('Including %s' % path)
             all_css += open(path).read() + '\n'
-        
+
     with open(os.path.join(plugin, 'resources/build/all.js'), 'w') as f:
         f.write(all_js)
     with open(os.path.join(plugin, 'resources/build/all.css'), 'w') as f:
         f.write(all_css)
-
 
 
 def usage():
@@ -119,8 +119,8 @@ if __name__ == '__main__':
 
     try:
         opts, args = getopt.getopt(
-            sys.argv[1:], 
-            '', 
+            sys.argv[1:],
+            '',
             [
                 'run',
                 'run-dev',
