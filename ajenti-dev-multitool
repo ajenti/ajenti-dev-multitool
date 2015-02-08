@@ -3,8 +3,11 @@ import getopt
 import hashlib
 import logging
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
+import time
 import yaml
 
 
@@ -98,6 +101,75 @@ def run_build(plugin, cache_enabled):
         f.write(all_css)
 
 
+def run_setuptools(plugin, cmd):
+    info = yaml.load(open(os.path.join(plugin, 'plugin.yml')))
+    print info
+    workspace = tempfile.mkdtemp()
+    logging.info('Working under %s' % workspace)
+    shutil.copytree(plugin, os.path.join(workspace, 'ajenti_plugin_%s' % info['name']))
+    shutil.copy(os.path.join(plugin, 'requirements.txt'), workspace)
+
+    setuppy = '''#!/usr/bin/env python
+from setuptools import setup, find_packages
+
+import os
+
+__requires = filter(None, open('requirements.txt').read().splitlines())
+
+setup(
+    name='ajenti.plugin.%(name)s',
+    version='%(version)s',
+    install_requires=__requires,
+    description='Ajenti %(name)s plugin',
+    author='%(author)s',
+    author_email='%(email)s',
+    url='%(url)s',
+    packages=find_packages(),
+    include_package_data=True,
+)
+    ''' % info
+    with open(os.path.join(workspace, 'setup.py'), 'w') as f:
+        f.write(setuppy)
+
+    manifest = '''
+recursive-exclude . *.pyc
+recursive-include ajenti_plugin_%(name)s/content *
+recursive-include ajenti_plugin_%(name)s/resources *
+include ajenti_plugin_%(name)s/plugin.yml
+include MANIFEST.in
+include requirements.txt
+    ''' % info
+    with open(os.path.join(workspace, 'MANIFEST.in'), 'w') as f:
+        f.write(manifest)
+
+    subprocess.check_call('python setup.py %s' % cmd, cwd=workspace, shell=True)
+
+    dist = os.path.join(workspace, 'dist')
+    sdist = os.path.join(plugin, 'dist')
+    if os.path.exists(sdist):
+        shutil.rmtree(sdist)
+    if os.path.exists(dist):
+        shutil.copytree(dist, sdist)
+
+    if 'upload' in cmd.split():
+        open(os.path.join(plugin, '.last-upload'), 'w').write(str(time.time()))
+
+
+def run_find_outdated(plugin):
+    last_upload = 0
+    last_file = os.path.join(plugin, '.last-upload')
+    if os.path.exists(last_file):
+        last_upload = float(open(last_file).read())
+
+    last_changed = 0
+    for d, dn, fn in os.walk(plugin):
+        for f in fn:
+            last_changed = max(last_changed, os.stat(os.path.join(d, f)).st_mtime)
+
+    if last_changed > last_upload + 10:
+        logging.warn('Plugin %s has unpublished changes' % plugin)
+
+
 def usage():
     #General commands
     #    --create-plugin <name>     - creates a new plugin in a subdirectory
@@ -110,6 +182,8 @@ Plugin commands (these operate on all plugins found within current directory)
     --bower '<cmdline>'        - Run Bower, e.g. --bower install
     --build                    - Compile resources
     --rebuild                  - Force recompile resources
+    --setuppy '<args>          - Run a setuptools build
+    --find-outdated            - Find plugins that have unpublished changes
     """ % sys.argv[0])
 
 
@@ -127,6 +201,8 @@ if __name__ == '__main__':
                 'bower=',
                 'build',
                 'rebuild',
+                'setuppy=',
+                'find-outdated',
             ]
         )
     except getopt.GetoptError as e:
@@ -158,6 +234,14 @@ if __name__ == '__main__':
         if o == '--rebuild':
             for plugin in find_plugins():
                 run_build(plugin, False)
+            sys.exit(0)
+        if o == '--setuppy':
+            for plugin in find_plugins():
+                run_setuptools(plugin, a)
+            sys.exit(0)
+        if o == '--find-outdated':
+            for plugin in find_plugins():
+                run_find_outdated(plugin)
             sys.exit(0)
         elif o == '--set-platform':
             ajenti.platform = a
