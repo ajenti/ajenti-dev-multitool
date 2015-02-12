@@ -109,7 +109,8 @@ def run_setuptools(plugin, cmd):
     shutil.copytree(plugin, os.path.join(workspace, 'ajenti_plugin_%s' % info['name']))
     shutil.copy(os.path.join(plugin, 'requirements.txt'), workspace)
 
-    setuppy = '''#!/usr/bin/env python
+    setuppy = '''
+#!/usr/bin/env python
 from setuptools import setup, find_packages
 
 import os
@@ -120,14 +121,15 @@ setup(
     name='ajenti.plugin.%(name)s',
     version='%(version)s',
     install_requires=__requires,
-    description='Ajenti %(name)s plugin',
+    description='%(title)s',
+    long_description='A %(title)s plugin for Ajenti panel',
     author='%(author)s',
     author_email='%(email)s',
     url='%(url)s',
     packages=find_packages(),
     include_package_data=True,
 )
-    ''' % info
+    '''.strip() % info
     with open(os.path.join(workspace, 'setup.py'), 'w') as f:
         f.write(setuppy)
 
