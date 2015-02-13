@@ -167,7 +167,11 @@ def run_find_outdated(plugin):
     for d, dn, fn in os.walk(plugin):
         if d.endswith('/dist'):
             continue
+        if d.endswith('/resources/build'):
+            continue
         for f in fn:
+            if os.stat(os.path.join(d, f)).st_mtime > last_upload + 10:
+                print d, f
             last_changed = max(last_changed, os.stat(os.path.join(d, f)).st_mtime)
 
     if last_changed > last_upload + 10:

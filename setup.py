@@ -5,7 +5,7 @@ from setuptools import find_packages
 
 setup(
     name='ajenti-dev-multitool',
-    version='0.12',
+    version='0.13',
     install_requires=[
         'pyyaml',
     ],
