@@ -165,6 +165,8 @@ def run_find_outdated(plugin):
 
     last_changed = 0
     for d, dn, fn in os.walk(plugin):
+        if d.endswith('/dist'):
+            continue
         for f in fn:
             last_changed = max(last_changed, os.stat(os.path.join(d, f)).st_mtime)
 
