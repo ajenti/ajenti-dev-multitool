@@ -103,7 +103,8 @@ def run_build(plugin, cache_enabled):
 
 def run_setuptools(plugin, cmd):
     info = yaml.load(open(os.path.join(plugin, 'plugin.yml')))
-    print info
+    if 'demo_' in plugin:
+        return
     workspace = tempfile.mkdtemp()
     logging.info('Working under %s' % workspace)
     shutil.copytree(plugin, os.path.join(workspace, 'ajenti_plugin_%s' % info['name']))
