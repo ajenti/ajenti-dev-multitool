@@ -159,6 +159,8 @@ include requirements.txt
 
 
 def run_find_outdated(plugin):
+    if 'demo_' in plugin:
+        return
     last_upload = 0
     last_file = os.path.join(plugin, '.last-upload')
     if os.path.exists(last_file):
@@ -171,6 +173,8 @@ def run_find_outdated(plugin):
         if d.endswith('/resources/build'):
             continue
         for f in fn:
+            if os.path.splitext(f)[-1] in ['.pyc']:
+                continue
             if os.stat(os.path.join(d, f)).st_mtime > last_upload + 10:
                 print d, f
             last_changed = max(last_changed, os.stat(os.path.join(d, f)).st_mtime)
