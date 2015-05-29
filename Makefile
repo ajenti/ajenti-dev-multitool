@@ -1,2 +1,2 @@
 upload:
-	./setup.py sdist upload
+	./setup.py sdist upload --sign --identity "Ajenti Packagers"

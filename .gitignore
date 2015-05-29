@@ -1,6 +1,6 @@
 *.pyc
 *~
-
+MANIFEST
 *.egg*
 build/*
 dist/*
