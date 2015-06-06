@@ -109,7 +109,13 @@ def run_setuptools(plugin, cmd):
     workspace = tempfile.mkdtemp()
     logging.info('Running setup.py for %s', plugin)
     logging.debug('Working under %s' % workspace)
-    shutil.copytree(plugin, os.path.join(workspace, 'ajenti_plugin_%s' % info['name']))
+    workspace_plugin = os.path.join(workspace, 'ajenti_plugin_%s' % info['name'])
+
+    dist = os.path.join(plugin, 'dist')
+    if os.path.exists(dist):
+        shutil.rmtree(dist)
+
+    shutil.copytree(plugin, workspace_plugin)
     shutil.copy(os.path.join(plugin, 'requirements.txt'), workspace)
 
     setuppy = '''
@@ -146,6 +152,16 @@ include requirements.txt
     with open(os.path.join(workspace, 'MANIFEST.in'), 'w') as f:
         f.write(manifest)
 
+    if 'pre_build' in info:
+        logging.info('  -> running pre-build script')
+        f = tempfile.NamedTemporaryFile(delete=False)
+        try:
+            f.write(info['pre_build'])
+            f.close()
+            subprocess.check_call(['sh', f.name], cwd=workspace_plugin)
+        finally:
+            os.unlink(f.name)
+
     logging.info('  -> setup.py %s', cmd)
     try:
         subprocess.check_output('python setup.py %s' % cmd, cwd=workspace, shell=True)
@@ -161,8 +177,12 @@ include requirements.txt
     if os.path.exists(dist):
         shutil.copytree(dist, sdist)
 
+    shutil.rmtree(workspace)
+
     if 'upload' in cmd.split():
         open(os.path.join(plugin, '.last-upload'), 'w').write(str(time.time()))
+
+    logging.info('setup.py has finished')
 
 
 def run_find_outdated(plugin):
