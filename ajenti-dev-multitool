@@ -104,6 +104,7 @@ def run_build(plugin, cache_enabled):
 
 def run_setuptools(plugin, cmd):
     info = yaml.load(open(os.path.join(plugin, 'plugin.yml')))
+    info['pypi_name'] = info['name'].replace('_', '-')
     if 'demo_' in plugin:
         return
     workspace = tempfile.mkdtemp()
@@ -127,7 +128,7 @@ import os
 __requires = filter(None, open('requirements.txt').read().splitlines())
 
 setup(
-    name='ajenti.plugin.%(name)s',
+    name='ajenti.plugin.%(pypi_name)s',
     version='%(version)s',
     install_requires=__requires,
     description='%(title)s',
