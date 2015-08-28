@@ -147,7 +147,7 @@ setup(
 
     manifest = '''
 recursive-include ajenti_plugin_%(name)s * *.*
-recursive-exclude ajenti_plugin_%(name)s *~ *.pyc
+recursive-exclude ajenti_plugin_%(name)s *.pyc
 include ajenti_plugin_%(name)s/plugin.yml
 include MANIFEST.in
 include requirements.txt
