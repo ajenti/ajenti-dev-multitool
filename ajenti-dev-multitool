@@ -143,6 +143,8 @@ setup(
     with open(os.path.join(workspace, 'setup.py'), 'w') as f:
         f.write(setuppy)
 
+    open(os.path.join(workspace, 'README'), 'w').close()
+
     manifest = '''
 recursive-include ajenti_plugin_%(name)s * *.*
 recursive-exclude ajenti_plugin_%(name)s *~ *.pyc
