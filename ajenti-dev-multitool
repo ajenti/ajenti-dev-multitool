@@ -258,7 +258,7 @@ if __name__ == '__main__':
         if o.startswith('--run'):
             cmd = [
                 'ajenti-panel',
-                '-v', '--plugins', '.'
+                '-v', '--autologin', '--stock-plugins', '--plugins', '.'
             ]
             if o == '--run-dev':
                 cmd += ['--dev']
