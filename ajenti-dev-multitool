@@ -2,6 +2,7 @@
 import coloredlogs
 import getopt
 import hashlib
+import json
 import logging
 import os
 import shutil
@@ -20,7 +21,7 @@ def find_plugins():
         yield '.'
     else:
         for dp, dn, fn in os.walk('.'):
-            for d in dn:
+            for d in sorted(dn):
                 dir = os.path.join(dp, d)
                 if os.path.exists(os.path.join(dir, 'plugin.yml')):
                     yield dir
@@ -214,9 +215,196 @@ def run_find_outdated(plugin):
         return True
 
 
+def run_xgettext(plugin):
+    locale_path = os.path.join(plugin, 'locale')
+    if not os.path.exists(locale_path):
+        os.makedirs(locale_path + '/en/LC_MESSAGES')
+
+    pot_path = os.path.join(locale_path, 'app.pot')
+    if os.path.exists(pot_path):
+        os.unlink(pot_path)
+
+    logging.info('Extracting from %s', plugin)
+    logging.info('           into %s', pot_path)
+
+    if subprocess.call(['which', 'xgettext'], stdout=subprocess.PIPE) != 0:
+        logging.error('xgettext not found!')
+        sys.exit(1)
+
+    if subprocess.call(['which', 'angular-gettext-cli'], stdout=subprocess.PIPE) != 0:
+        logging.error('angular-gettext-cli not found (sudo npm -g install angular-gettext-cli)!')
+        sys.exit(1)
+
+    subprocess.check_call([
+        'angular-gettext-cli',
+        '--files', '%s/**/*.html' % plugin,
+        '--dest', pot_path,
+        '--marker-name', 'i18n',
+    ])
+
+    for (dirpath, dirnames, filenames) in os.walk(plugin, followlinks=True):
+        if 'vendor' in dirpath or 'build' in dirpath:
+            continue
+        for f in filenames:
+            path = os.path.join(dirpath, f)
+            if f.endswith(('.coffee', '.js')):
+                logging.info(' -> (js) %s' % path)
+                subprocess.check_call([
+                    'xgettext',
+                    '--from-code', 'utf8',
+                    '-c', '-d', 'app',
+                    '-L', 'javascript',
+                    '--keyword=gettext',
+                    '-o', pot_path,
+                    '-j', path,
+                ])
+            if f.endswith('.py'):
+                logging.info(' -> (py) %s' % path)
+                subprocess.check_call([
+                    'xgettext',
+                    '--from-code', 'utf8',
+                    '-c', '-d', 'app',
+                    '-o', pot_path,
+                    '-j', path,
+                ])
+
+    for dir in os.listdir(locale_path):
+        path = os.path.join(locale_path, dir, 'LC_MESSAGES')
+        if os.path.isdir(path):
+            logging.info(' :: processing %s' % dir)
+            po_path = os.path.join(path, 'app.po')
+            if os.path.exists(po_path):
+                subprocess.check_call([
+                    'msgmerge',
+                    '-U',
+                    po_path, pot_path,
+                ])
+            else:
+                with open(po_path, 'w') as f:
+                    f.write(open(pot_path).read())
+
+
+def run_push_crowdin(plugins):
+    dir = tempfile.mkdtemp()
+    logging.info('Working in %s' % dir)
+    for plugin in plugins:
+        locale_path = os.path.join(plugin, 'locale')
+        pot_path = os.path.join(locale_path, 'app.pot')
+        if os.path.exists(pot_path):
+            logging.info('Copying %s', pot_path)
+            with open(os.path.join(dir, os.path.split(plugin)[1] + '.po'), 'w') as f:
+                f.write(open(pot_path).read())
+
+    try:
+        key = open('.crowdin.key').read().strip()
+    except Exception as e:
+        logging.error('Could not read ".crowdin.key": %s', e)
+        sys.exit(1)
+
+    for file in os.listdir(dir):
+        logging.info(' :: uploading %s' % file)
+        subprocess.check_call([
+            'curl', '-F', 'files[/2.0/%s]=@%s' % (
+                file,
+                os.path.join(dir, file),
+            ),
+            'http://api.crowdin.net/api/project/ajenti/update-file?key=%s' % key
+        ])
+
+    shutil.rmtree(dir)
+
+
+def run_pull_crowdin(plugins):
+    try:
+        key = open('.crowdin.key').read().strip()
+    except Exception as e:
+        logging.error('Could not read ".crowdin.key": %s', e)
+        sys.exit(1)
+
+    map = dict((os.path.split(p)[1], p) for p in plugins)
+    dir = tempfile.mkdtemp()
+    logging.info('Working in %s' % dir)
+
+    logging.info('Requesting build')
+    subprocess.check_call([
+        'curl', 'http://api.crowdin.net/api/project/ajenti/export?key=%s' % key
+    ])
+
+    logging.info('Downloading')
+    zip_path = os.path.join(dir, 'all.zip')
+    subprocess.check_call([
+        'wget', 'http://api.crowdin.net/api/project/ajenti/download/all.zip?key=%s' % key,
+        '-O', zip_path
+    ])
+
+    subprocess.check_call([
+        'unzip', 'all.zip'
+    ], cwd=dir)
+
+    os.unlink(zip_path)
+
+    for lang in os.listdir(dir):
+        if lang == 'ajenti':
+            continue
+        logging.info(' -> processing %s', lang)
+        for name, plugin in map.iteritems():
+            zip_po_path = os.path.join(dir, lang, '2.0', name + '.po')
+            if os.path.exists(zip_po_path):
+                locale_path = os.path.join(plugin, 'locale', lang, 'LC_MESSAGES')
+                if not os.path.exists(locale_path):
+                    os.makedirs(locale_path)
+                po_path = os.path.join(locale_path, 'app.po')
+                with open(po_path, 'w') as f:
+                    f.write(open(zip_po_path).read())
+
+    shutil.rmtree(dir)
+
+
+def run_msgfmt(plugin):
+    locale_path = os.path.join(plugin, 'locale')
+    if not os.path.exists(locale_path):
+        return
+
+    logging.info('Compiling in %s', locale_path)
+
+    if subprocess.call(['which', 'msgfmt'], stdout=subprocess.PIPE) != 0:
+        logging.error('msgfmt not found!')
+        sys.exit(1)
+
+    if subprocess.call(['which', 'angular-gettext-cli'], stdout=subprocess.PIPE) != 0:
+        logging.error('angular-gettext-cli not found (sudo npm -g install angular-gettext-cli)!')
+        sys.exit(1)
+
+    for lang in os.listdir(locale_path):
+        if lang in ['app.pot', 'en']:
+            continue
+
+        po_path = os.path.join(locale_path, lang, 'LC_MESSAGES', 'app.po')
+        js_path = os.path.join(locale_path, lang, 'LC_MESSAGES', 'app.js')
+
+        '''
+        subprocess.check_call([
+            'msgfmt',
+            po_path,
+            '-o',
+            os.path.join(locale_path, lang, 'LC_MESSAGES', 'app.mo'),
+        ])
+        '''
+
+        js_locale = {}
+        msgid = None
+        for line in open(po_path):
+            if line.startswith('msgid'):
+                msgid = line.split(None, 1)[1].strip().strip('"')
+            if line.startswith('msgstr'):
+                msgstr = line.split(None, 1)[1].strip().strip('"')
+                js_locale[msgid] = msgstr
+
+        with open(js_path, 'w') as f:
+            f.write(json.dumps(js_locale))
+
+
 def usage():
-    #General commands
-    #    --create-plugin <name>     - creates a new plugin in a subdirectory
     print("""
 Usage: %s [options]
 
@@ -228,6 +416,8 @@ Plugin commands (these operate on all plugins found within current directory)
     --rebuild                  - Force recompile resources
     --setuppy '<args>          - Run a setuptools build
     --find-outdated            - Find plugins that have unpublished changes
+    --xgettext                 - Extracts localizable strings
+    --msgfmt                   - Compiles translated localizable strings
     """ % sys.argv[0])
 
 
@@ -247,6 +437,10 @@ if __name__ == '__main__':
                 'rebuild',
                 'setuppy=',
                 'find-outdated',
+                'xgettext',
+                'msgfmt',
+                'push-crowdin',
+                'pull-crowdin',
             ]
         )
     except getopt.GetoptError as e:
@@ -271,29 +465,41 @@ if __name__ == '__main__':
             for plugin in find_plugins():
                 run_bower(plugin, a)
             sys.exit(0)
-        if o == '--build':
+        elif o == '--build':
             for plugin in find_plugins():
                 run_build(plugin, True)
             logging.info('Resource build complete')
             sys.exit(0)
-        if o == '--rebuild':
+        elif o == '--rebuild':
             for plugin in find_plugins():
                 run_build(plugin, False)
             logging.info('Resource rebuild complete')
             sys.exit(0)
-        if o == '--setuppy':
+        elif o == '--setuppy':
             for plugin in find_plugins():
                 run_setuptools(plugin, a)
             sys.exit(0)
-        if o == '--find-outdated':
+        elif o == '--find-outdated':
             found = 0
             for plugin in find_plugins():
                 if run_find_outdated(plugin):
                     found += 1
             logging.info('Scan complete, %s updated plugin(s) found', found)
             sys.exit(0)
-        elif o == '--set-platform':
-            ajenti.platform = a
+        elif o == '--xgettext':
+            for plugin in find_plugins():
+                run_xgettext(plugin)
+            sys.exit(0)
+        elif o == '--msgfmt':
+            for plugin in find_plugins():
+                run_msgfmt(plugin)
+            sys.exit(0)
+        elif o == '--push-crowdin':
+            run_push_crowdin(list(find_plugins()))
+            sys.exit(0)
+        elif o == '--pull-crowdin':
+            run_pull_crowdin(list(find_plugins()))
+            sys.exit(0)
 
     usage()
     sys.exit(2)
