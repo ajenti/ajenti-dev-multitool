@@ -251,7 +251,7 @@ def run_xgettext(plugin):
                 logging.info(' -> (js) %s' % path)
                 subprocess.check_call([
                     'xgettext',
-                    '--from-code', 'utf8',
+                    '--from-code', 'utf-8',
                     '-c', '-d', 'app',
                     '-L', 'javascript',
                     '--keyword=gettext',
@@ -262,7 +262,7 @@ def run_xgettext(plugin):
                 logging.info(' -> (py) %s' % path)
                 subprocess.check_call([
                     'xgettext',
-                    '--from-code', 'utf8',
+                    '--from-code', 'utf-8',
                     '-c', '-d', 'app',
                     '-o', pot_path,
                     '-j', path,
