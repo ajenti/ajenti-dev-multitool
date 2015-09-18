@@ -284,7 +284,7 @@ def run_xgettext(plugin):
                     f.write(open(pot_path).read())
 
 
-def run_push_crowdin(plugins):
+def run_push_crowdin(plugins, add=False):
     dir = tempfile.mkdtemp()
     logging.info('Working in %s' % dir)
     for plugin in plugins:
@@ -308,7 +308,10 @@ def run_push_crowdin(plugins):
                 file,
                 os.path.join(dir, file),
             ),
-            'http://api.crowdin.net/api/project/ajenti/update-file?key=%s' % key
+            'http://api.crowdin.net/api/project/ajenti/%s?key=%s' % (
+                'add-file' if add else 'update-file',
+                key
+            )
         ])
 
     shutil.rmtree(dir)
@@ -439,6 +442,7 @@ if __name__ == '__main__':
                 'find-outdated',
                 'xgettext',
                 'msgfmt',
+                'add-crowdin',
                 'push-crowdin',
                 'pull-crowdin',
             ]
@@ -493,6 +497,9 @@ if __name__ == '__main__':
         elif o == '--msgfmt':
             for plugin in find_plugins():
                 run_msgfmt(plugin)
+            sys.exit(0)
+        elif o == '--add-crowdin':
+            run_push_crowdin(list(find_plugins()), add=True)
             sys.exit(0)
         elif o == '--push-crowdin':
             run_push_crowdin(list(find_plugins()))
