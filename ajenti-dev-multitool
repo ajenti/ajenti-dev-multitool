@@ -189,6 +189,28 @@ include requirements.txt
     logging.info('setup.py has finished')
 
 
+def run_bump(plugin):
+    path = os.path.join(plugin, 'plugin.yml')
+    output = ''
+    bumped = False
+    for l in open(path).read().splitlines():
+        if l.startswith('version:'):
+            prefix, counter = l.rsplit('.', 1)
+            counter = counter.rstrip("'")
+            counter = str(int(counter) + 1)
+            l = prefix + '.' + counter
+            if "'" in prefix:
+                l += "'"
+            bumped = True
+        output += l + '\n'
+    if bumped:
+        with open(path, 'w') as f:
+            f.write(output)
+        logging.info('Bumped %s to %s.%s', plugin, prefix.split(':')[1].strip(" '"), counter)
+    else:
+        logging.warn('Could not find version info for %s', plugin)
+
+
 def run_find_outdated(plugin):
     if 'demo_' in plugin:
         return
@@ -418,6 +440,7 @@ Plugin commands (these operate on all plugins found within current directory)
     --build                    - Compile resources
     --rebuild                  - Force recompile resources
     --setuppy '<args>          - Run a setuptools build
+    --bump                     - Bump plugin's version
     --find-outdated            - Find plugins that have unpublished changes
     --xgettext                 - Extracts localizable strings
     --msgfmt                   - Compiles translated localizable strings
@@ -439,6 +462,7 @@ if __name__ == '__main__':
                 'build',
                 'rebuild',
                 'setuppy=',
+                'bump',
                 'find-outdated',
                 'xgettext',
                 'msgfmt',
@@ -482,6 +506,10 @@ if __name__ == '__main__':
         elif o == '--setuppy':
             for plugin in find_plugins():
                 run_setuptools(plugin, a)
+            sys.exit(0)
+        elif o == '--bump':
+            for plugin in find_plugins():
+                run_bump(plugin)
             sys.exit(0)
         elif o == '--find-outdated':
             found = 0
