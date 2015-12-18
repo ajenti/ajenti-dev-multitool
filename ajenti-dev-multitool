@@ -79,21 +79,26 @@ def run_build(plugin, cache_enabled):
     all_js = ''
     all_css = ''
     for resource in resources:
-        path = os.path.join(plugin, resource)
-        if resource.endswith('.coffee'):
+        if isinstance(resource, basestring):
+            resource = {
+                'path': resource
+            }
+
+        path = os.path.join(plugin, resource['path'])
+        if resource['path'].endswith('.coffee'):
             if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
                 logging.info('Compiling %s' % path)
                 set_cached(path, subprocess.check_output(['coffee', '-p', '-c', path]) + '\n')
             all_js += get_cached(path)
-        if resource.endswith('.js'):
+        if resource['path'].endswith('.js'):
             logging.debug('Including %s' % path)
             all_js += open(path).read() + '\n'
-        if resource.endswith('.less'):
+        if resource['path'].endswith('.less'):
             if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
                 logging.info('Compiling %s' % path)
                 set_cached(path, subprocess.check_output(['lessc', path]) + '\n')
             all_css += get_cached(path)
-        if resource.endswith('.css'):
+        if resource['path'].endswith('.css'):
             logging.debug('Including %s' % path)
             all_css += open(path).read() + '\n'
 
