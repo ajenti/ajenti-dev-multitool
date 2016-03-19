@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 import coloredlogs
 import getopt
+import gevent
 import hashlib
 import json
 import logging
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import time
 import yaml
-
+from gevent import subprocess
 
 yaml.add_multi_constructor('tag:yaml.org,2002:python/object:', lambda a, b, c: None)
 
@@ -78,29 +78,44 @@ def run_build(plugin, cache_enabled):
 
     all_js = ''
     all_css = ''
+
+    workers = []
+
+    def worker(path, args):
+        set_cached(path, subprocess.check_output(args) + '\n')
+
     for resource in resources:
         if isinstance(resource, basestring):
-            resource = {
-                'path': resource
-            }
+            resource = {'path': resource}
 
         path = os.path.join(plugin, resource['path'])
         if resource['path'].endswith('.coffee'):
             if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
                 logging.info('Compiling %s' % path)
-                set_cached(path, subprocess.check_output(['coffee', '-p', '-c', path]) + '\n')
+                workers.append(gevent.spawn(worker, path, ['coffee', '-p', '-c', path]))
+        if resource['path'].endswith('.less'):
+            if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
+                logging.info('Compiling %s' % path)
+                workers.append(gevent.spawn(worker, path, ['lessc', path]))
+
+    gevent.joinall(workers)
+
+    for resource in resources:
+        if isinstance(resource, basestring):
+            resource = {'path': resource}
+
+        path = os.path.join(plugin, resource['path'])
+        if resource['path'].endswith('.coffee'):
             all_js += get_cached(path)
         if resource['path'].endswith('.js'):
             logging.debug('Including %s' % path)
             all_js += open(path).read() + '\n'
         if resource['path'].endswith('.less'):
-            if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
-                logging.info('Compiling %s' % path)
-                set_cached(path, subprocess.check_output(['lessc', path]) + '\n')
             all_css += get_cached(path)
         if resource['path'].endswith('.css'):
             logging.debug('Including %s' % path)
             all_css += open(path).read() + '\n'
+
 
     with open(os.path.join(plugin, 'resources/build/all.js'), 'w') as f:
         f.write(all_js)

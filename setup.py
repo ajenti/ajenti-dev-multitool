@@ -4,10 +4,11 @@ from distutils.core import setup
 
 setup(
     name='ajenti-dev-multitool',
-    version='1.0.14',
+    version='1.0.15',
     install_requires=[
         'coloredlogs',
         'pyyaml',
+        'gevent',
     ],
     description='-',
     author='Eugene Pankov',
