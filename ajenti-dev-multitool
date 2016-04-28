@@ -125,7 +125,7 @@ def run_build(plugin, cache_enabled):
 
 def run_setuptools(plugin, cmd):
     info = yaml.load(open(os.path.join(plugin, 'plugin.yml')))
-    info['pypi_name'] = info['name'].replace('_', '-')
+    info['pypi_name'] = info['name']
     if 'demo_' in plugin:
         return
     workspace = tempfile.mkdtemp()
