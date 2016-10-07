@@ -76,8 +76,7 @@ def run_build(plugin, cache_enabled):
     if not os.path.exists(os.path.join(plugin, 'resources/build')):
         os.makedirs(os.path.join(plugin, 'resources/build'))
 
-    all_js = ''
-    all_css = ''
+    all_js = all_vendor_js = all_css = all_vendor_css = ''
 
     workers = []
 
@@ -109,23 +108,33 @@ def run_build(plugin, cache_enabled):
             resource = {'path': resource}
 
         path = os.path.join(plugin, resource['path'])
-        if resource['path'].endswith('.coffee'):
-            all_js += get_cached(path)
-        if resource['path'].endswith('.es'):
-            all_js += get_cached(path)
-        if resource['path'].endswith('.js'):
-            logging.debug('Including %s' % path)
-            all_js += open(path).read() + '\n'
-        if resource['path'].endswith('.less'):
-            all_css += get_cached(path)
-        if resource['path'].endswith('.css'):
-            logging.debug('Including %s' % path)
-            all_css += open(path).read() + '\n'
+
+        if 'vendor/' in resource['path']:
+            if resource['path'].endswith('.js'):
+                logging.debug('Including %s' % path)
+                all_vendor_js += open(path).read() + '\n'
+            if resource['path'].endswith('.css'):
+                logging.debug('Including %s' % path)
+                all_vendor_css += open(path).read() + '\n'
+        else:
+            if resource['path'].endswith('.coffee'):
+                all_js += get_cached(path)
+            if resource['path'].endswith('.es'):
+                all_js += get_cached(path)
+            if resource['path'].endswith('.js'):
+                logging.debug('Including %s' % path)
+                all_js += open(path).read() + '\n'
+            if resource['path'].endswith('.less'):
+                all_css += get_cached(path)
 
     with open(os.path.join(plugin, 'resources/build/all.js'), 'w') as f:
         f.write(all_js)
     with open(os.path.join(plugin, 'resources/build/all.css'), 'w') as f:
         f.write(all_css)
+    with open(os.path.join(plugin, 'resources/build/all.vendor.js'), 'w') as f:
+        f.write(all_vendor_js)
+    with open(os.path.join(plugin, 'resources/build/all.vendor.css'), 'w') as f:
+        f.write(all_vendor_css)
 
 
 def run_setuptools(plugin, cmd):
