@@ -89,6 +89,10 @@ def run_build(plugin, cache_enabled):
             resource = {'path': resource}
 
         path = os.path.join(plugin, resource['path'])
+        if resource['path'].endswith('.es'):
+            if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
+                logging.info('Compiling %s' % path)
+                workers.append(gevent.spawn(worker, path, ['babel', '--presets', 'es2015', path]))
         if resource['path'].endswith('.coffee'):
             if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
                 logging.info('Compiling %s' % path)
@@ -107,6 +111,8 @@ def run_build(plugin, cache_enabled):
         path = os.path.join(plugin, resource['path'])
         if resource['path'].endswith('.coffee'):
             all_js += get_cached(path)
+        if resource['path'].endswith('.es'):
+            all_js += get_cached(path)
         if resource['path'].endswith('.js'):
             logging.debug('Including %s' % path)
             all_js += open(path).read() + '\n'
@@ -115,7 +121,6 @@ def run_build(plugin, cache_enabled):
         if resource['path'].endswith('.css'):
             logging.debug('Including %s' % path)
             all_css += open(path).read() + '\n'
-
 
     with open(os.path.join(plugin, 'resources/build/all.js'), 'w') as f:
         f.write(all_js)
