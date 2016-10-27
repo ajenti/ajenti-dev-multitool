@@ -49,6 +49,10 @@ def run_bower(path, cmdline):
 
 
 def run_build(plugin, cache_enabled):
+    babel_preset = '/usr/local/lib/node_modules/babel-preset-es2015'
+    if not os.path.isdir(babel_preset):
+        babel_preset = 'es2015'
+
     cache_path = '/tmp/.ajenti-resource-cache'
     if not os.path.exists(cache_path):
         os.makedirs(cache_path)
@@ -79,9 +83,16 @@ def run_build(plugin, cache_enabled):
     all_js = all_vendor_js = all_css = all_vendor_css = ''
 
     workers = []
+    errors = []
 
     def worker(path, args):
-        set_cached(path, subprocess.check_output(args) + '\n')
+        try:
+            set_cached(path, subprocess.check_output(args, stderr=subprocess.STDOUT) + '\n')
+        except subprocess.CalledProcessError as e:
+            errors.append({
+                'path': path,
+                'output': e.output,
+            })
 
     for resource in resources:
         if isinstance(resource, basestring):
@@ -91,7 +102,7 @@ def run_build(plugin, cache_enabled):
         if resource['path'].endswith('.es'):
             if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
                 logging.info('Compiling %s' % path)
-                workers.append(gevent.spawn(worker, path, ['babel', '--presets', 'es2015', path]))
+                workers.append(gevent.spawn(worker, path, ['babel', '--presets', babel_preset, path]))
         if resource['path'].endswith('.coffee'):
             if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
                 logging.info('Compiling %s' % path)
@@ -102,6 +113,14 @@ def run_build(plugin, cache_enabled):
                 workers.append(gevent.spawn(worker, path, ['lessc', path]))
 
     gevent.joinall(workers)
+    if len(errors) > 0:
+        logging.error('BUILD FAILED')
+        logging.info('  %s error(s):' % len(errors))
+        for error in errors:
+            logging.error(' * %s' % error['path'])
+            for line in error['output'].splitlines():
+                logging.warn(line)
+        sys.exit(1)
 
     for resource in resources:
         if isinstance(resource, basestring):
@@ -127,14 +146,17 @@ def run_build(plugin, cache_enabled):
             if resource['path'].endswith('.less'):
                 all_css += get_cached(path)
 
-    with open(os.path.join(plugin, 'resources/build/all.js'), 'w') as f:
-        f.write(all_js)
-    with open(os.path.join(plugin, 'resources/build/all.css'), 'w') as f:
-        f.write(all_css)
-    with open(os.path.join(plugin, 'resources/build/all.vendor.js'), 'w') as f:
-        f.write(all_vendor_js)
-    with open(os.path.join(plugin, 'resources/build/all.vendor.css'), 'w') as f:
-        f.write(all_vendor_css)
+    content_map = {
+        'all.js': all_js,
+        'all.css': all_css,
+        'all.vendor.js': all_vendor_js,
+        'all.vendor.css': all_vendor_css,
+    }
+    for (k, v) in content_map.iteritems():
+        path = os.path.join(plugin, 'resources/build/' + k)
+        with open(path, 'w') as f:
+            f.write(v)
+        os.chmod(path, 0o777)
 
 
 def run_setuptools(plugin, cmd):
@@ -482,7 +504,7 @@ Plugin commands (these operate on all plugins found within current directory)
 
 
 if __name__ == '__main__':
-    coloredlogs.install(logging.DEBUG)
+    coloredlogs.install(level=logging.DEBUG, show_hostname=False)
     sys.path.insert(0, '.')
 
     try:
