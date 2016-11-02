@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
     name='ajenti-dev-multitool',
-    version='1.0.20',
+    version='1.1.0',
     install_requires=[
         'coloredlogs',
         'pyyaml',

@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -20,9 +21,9 @@ def find_plugins():
     if os.path.exists('__init__.py'):
         yield '.'
     else:
-        for dp, dn, fn in os.walk('.'):
+        for dir_path, dn, fn in os.walk('.'):
             for d in sorted(dn):
-                dir = os.path.join(dp, d)
+                dir = os.path.join(dir_path, d)
                 if os.path.exists(os.path.join(dir, 'plugin.yml')):
                     yield dir
 
@@ -333,7 +334,7 @@ def run_xgettext(plugin):
                     '-c', '-d', 'app',
                     '-L', 'javascript',
                     '--keyword=gettext',
-                    '-o', pot_path,
+                    '-option', pot_path,
                     '-j', path,
                 ])
             if f.endswith('.py'):
@@ -342,7 +343,7 @@ def run_xgettext(plugin):
                     'xgettext',
                     '--from-code', 'utf-8',
                     '-c', '-d', 'app',
-                    '-o', pot_path,
+                    '-option', pot_path,
                     '-j', path,
                 ])
 
@@ -467,7 +468,7 @@ def run_msgfmt(plugin):
         subprocess.check_call([
             'msgfmt',
             po_path,
-            '-o',
+            '-option',
             os.path.join(locale_path, lang, 'LC_MESSAGES', 'app.mo'),
         ])
         '''
@@ -485,17 +486,51 @@ def run_msgfmt(plugin):
             f.write(json.dumps(js_locale))
 
 
+def new_plugin(name):
+    words = filter(None, re.split(r'[-\s]+', name))
+    words = [re.sub(r'[^\w]', '', x).lower() for x in words]
+    plugin_name = '_'.join(words)
+    plugin_dash_name = '-'.join(words)
+    pluginName = words[0] + ''.join([(x[0].upper() + x[1:]) for x in words[1:]])
+    PluginName = ''.join([(x[0].upper() + x[1:]) for x in words])
+    Plugin_Name = ' '.join([(x[0].upper() + x[1:]) for x in words])
+
+    logging.info('Using plugin name: %s', plugin_name)
+
+    logging.info('Downloading plugin template')
+    subprocess.check_call(['wget', 'https://github.com/ajenti/plugin-template/archive/master.zip'])
+    subprocess.check_call(['unzip', 'master.zip'])
+    os.unlink('master.zip')
+    os.rename('plugin-template-master', plugin_name)
+
+    logging.info('Renaming plugin')
+    for dir_path, dirs, files in os.walk(plugin_name):
+        for file_name in files:
+            path = os.path.join(dir_path, file_name)
+            content = open(path).read()
+            content = content.replace('MyPlugin', PluginName)
+            content = content.replace('My Plugin', Plugin_Name)
+            content = content.replace('myPlugin', pluginName)
+            content = content.replace('my_plugin', plugin_name)
+            content = content.replace('my-plugin', plugin_dash_name)
+            with open(path, 'w') as f:
+                f.write(content)
+
+    logging.info('Plugin created under ./%s/', plugin_name)
+
+
 def usage():
     print("""
 Usage: %s [options]
 
 Plugin commands (these operate on all plugins found within current directory)
+    --new-plugin '<some-name>' - Creates a new plugin boilerplate in current directory
     --run                      - Run Ajenti with plugins from the current directory
     --run-dev                  - Run Ajenti in dev mode with plugins from the current directory
     --bower '<cmdline>'        - Run Bower, e.g. --bower install
     --build                    - Compile resources
     --rebuild                  - Force recompile resources
-    --setuppy '<args>          - Run a setuptools build
+    --setuppy '<args>'         - Run a setuptools build
     --bump                     - Bump plugin's version
     --find-outdated            - Find plugins that have unpublished changes
     --xgettext                 - Extracts localizable strings
@@ -525,6 +560,7 @@ if __name__ == '__main__':
                 'add-crowdin',
                 'push-crowdin',
                 'pull-crowdin',
+                'new-plugin=',
             ]
         )
     except getopt.GetoptError as e:
@@ -532,64 +568,67 @@ if __name__ == '__main__':
         usage()
         sys.exit(2)
 
-    for o, a in opts:
-        if o.startswith('--run'):
+    for option, argument in opts:
+        if option.startswith('--run'):
             cmd = [
                 'ajenti-panel',
                 '-v', '--autologin', '--stock-plugins', '--plugins', '.'
             ]
-            if o == '--run-dev':
+            if option == '--run-dev':
                 cmd += ['--dev']
             try:
                 subprocess.call(cmd)
             except KeyboardInterrupt:
                 pass
             sys.exit(0)
-        if o == '--bower':
+        if option == '--bower':
             for plugin in find_plugins():
-                run_bower(plugin, a)
+                run_bower(plugin, argument)
             sys.exit(0)
-        elif o == '--build':
+        elif option == '--build':
             for plugin in find_plugins():
                 run_build(plugin, True)
             logging.info('Resource build complete')
             sys.exit(0)
-        elif o == '--rebuild':
+        elif option == '--rebuild':
             for plugin in find_plugins():
                 run_build(plugin, False)
             logging.info('Resource rebuild complete')
             sys.exit(0)
-        elif o == '--setuppy':
+        elif option == '--setuppy':
             for plugin in find_plugins():
-                run_setuptools(plugin, a)
+                run_setuptools(plugin, argument)
             sys.exit(0)
-        elif o == '--bump':
+        elif option == '--bump':
             for plugin in find_plugins():
                 run_bump(plugin)
             sys.exit(0)
-        elif o == '--find-outdated':
+        elif option == '--find-outdated':
             found = 0
             for plugin in find_plugins():
                 if run_find_outdated(plugin):
                     found += 1
             logging.info('Scan complete, %s updated plugin(s) found', found)
             sys.exit(0)
-        elif o == '--xgettext':
+        elif option == '--xgettext':
             for plugin in find_plugins():
                 run_xgettext(plugin)
             sys.exit(0)
-        elif o == '--msgfmt':
+        elif option == '--msgfmt':
             for plugin in find_plugins():
                 run_msgfmt(plugin)
             sys.exit(0)
-        elif o == '--add-crowdin':
+        elif option == '--add-crowdin':
             run_push_crowdin(list(find_plugins()), add=True)
             sys.exit(0)
-        elif o == '--push-crowdin':
+        elif option == '--push-crowdin':
             run_push_crowdin(list(find_plugins()))
             sys.exit(0)
-        elif o == '--pull-crowdin':
+        elif option == '--pull-crowdin':
             run_pull_crowdin(list(find_plugins()))
+            sys.exit(0)
+        elif option == '--new-plugin':
+            new_plugin(argument)
             sys.exit(0)
 
     usage()
