@@ -50,9 +50,13 @@ def run_bower(path, cmdline):
 
 
 def run_build(plugin, cache_enabled):
-    babel_preset = '/usr/local/lib/node_modules/babel-preset-es2015'
+    babel_preset = '/usr/lib/node_modules/babel-preset-es2015'
     if not os.path.isdir(babel_preset):
         babel_preset = 'es2015'
+
+    babel_eh_plugin = '/usr/lib/node_modules/babel-plugin-external-helpers'
+    if not os.path.isdir(babel_eh_plugin):
+        babel_eh_plugin = 'external-helpers'
 
     cache_path = '/tmp/.ajenti-resource-cache'
     if not os.path.exists(cache_path):
@@ -103,7 +107,7 @@ def run_build(plugin, cache_enabled):
         if resource['path'].endswith('.es'):
             if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
                 logging.info('Compiling %s' % path)
-                workers.append(gevent.spawn(worker, path, ['babel', '--presets', babel_preset, '--plugins', 'external-helpers', path]))
+                workers.append(gevent.spawn(worker, path, ['babel', '--presets', babel_preset, '--plugins', babel_eh_plugin, path]))
         if resource['path'].endswith('.coffee'):
             if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
                 logging.info('Compiling %s' % path)
