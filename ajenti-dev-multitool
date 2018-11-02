@@ -334,7 +334,7 @@ def run_xgettext(plugin):
                     '-c', '-d', 'app',
                     '-L', 'javascript',
                     '--keyword=gettext',
-                    '-option', pot_path,
+                    '-o', pot_path,
                     '-j', path,
                 ])
             if f.endswith('.py'):
@@ -343,7 +343,7 @@ def run_xgettext(plugin):
                     'xgettext',
                     '--from-code', 'utf-8',
                     '-c', '-d', 'app',
-                    '-option', pot_path,
+                    '-o', pot_path,
                     '-j', path,
                 ])
 
@@ -387,7 +387,7 @@ def run_push_crowdin(plugins, add=False):
                 file,
                 os.path.join(dir, file),
             ),
-            'http://api.crowdin.net/api/project/ajenti/%s?key=%s' % (
+            'https://api.crowdin.com/api/project/ajenti/%s?key=%s' % (
                 'add-file' if add else 'update-file',
                 key
             )
@@ -409,13 +409,13 @@ def run_pull_crowdin(plugins):
 
     logging.info('Requesting build')
     subprocess.check_call([
-        'curl', 'http://api.crowdin.net/api/project/ajenti/export?key=%s' % key
+        'curl', 'https://api.crowdin.com/api/project/ajenti/export?key=%s' % key
     ])
 
     logging.info('Downloading')
     zip_path = os.path.join(dir, 'all.zip')
     subprocess.check_call([
-        'wget', 'http://api.crowdin.net/api/project/ajenti/download/all.zip?key=%s' % key,
+        'wget', 'https://api.crowdin.com/api/project/ajenti/download/all.zip?key=%s' % key,
         '-O', zip_path
     ])
 
