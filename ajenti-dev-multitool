@@ -116,6 +116,10 @@ def run_build(plugin, cache_enabled):
             if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
                 logging.info('Compiling %s' % path)
                 workers.append(gevent.spawn(worker, path, ['lessc', path]))
+        if resource['path'].endswith('.scss'):
+￼             if not cache_enabled or not get_cached(path) or get_cached_time(path) < os.stat(path).st_mtime:
+￼                 logging.info('Compiling %s' % path)
+￼                 workers.append(gevent.spawn(worker, path, ['sass', path]))
 
     gevent.joinall(workers)
     if len(errors) > 0:
@@ -150,6 +154,8 @@ def run_build(plugin, cache_enabled):
                 all_js += open(path).read() + '\n'
             if resource['path'].endswith('.less'):
                 all_css += get_cached(path)
+            if resource['path'].endswith('.scss'):
+￼                 all_css += get_cached(path)
 
     content_map = {
         'all.js': all_js,
