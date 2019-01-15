@@ -385,12 +385,12 @@ def run_push_crowdin(plugins, add=False):
                 f.write(open(pot_path).read())
 
     try:
-        crowdinkey = open('.crowdin.key').read().strip().split('\n')
-        if len(crowdinkey) == 2:
-            projectname = crowdinkey[1]
+        crowdin_key = open('.crowdin.key').read().strip().split('\n')
+        if len(crowdin_key) == 2:
+            project_name = crowdin_key[1]
         else:
-            projectname = 'ajenti'
-        key         = crowdinkey[0]
+            project_name = 'ajenti'
+        key = crowdin_key[0]
     except Exception as e:
         logging.error('Could not read ".crowdin.key": %s', e)
         sys.exit(1)
@@ -403,7 +403,7 @@ def run_push_crowdin(plugins, add=False):
                 os.path.join(dir, file),
             ),
             'https://api.crowdin.com/api/project/%s/%s?key=%s' % (
-                projectname,
+                project_name,
                 'add-file' if add else 'update-file',
                 key
             )
@@ -414,12 +414,12 @@ def run_push_crowdin(plugins, add=False):
 
 def run_pull_crowdin(plugins):
     try:
-        crowdinkey = open('.crowdin.key').read().strip().split('\n')
-        if len(crowdinkey) == 2:
-            projectname = crowdinkey[1]
+        crowdin_key = open('.crowdin.key').read().strip().split('\n')
+        if len(crowdin_key) == 2:
+            project_name = crowdin_key[1]
         else:
-            projectname = 'ajenti'
-        key         = crowdinkey[0]
+            project_name = 'ajenti'
+        key = crowdin_key[0]
     except Exception as e:
         logging.error('Could not read ".crowdin.key": %s', e)
         sys.exit(1)
@@ -430,13 +430,13 @@ def run_pull_crowdin(plugins):
 
     logging.info('Requesting build')
     subprocess.check_call([
-        'curl', 'https://api.crowdin.com/api/project/%s/export?key=%s' % (projectname, key)
+        'curl', 'https://api.crowdin.com/api/project/%s/export?key=%s' % (project_name, key)
     ])
 
     logging.info('Downloading')
     zip_path = os.path.join(dir, 'all.zip')
     subprocess.check_call([
-        'wget', 'https://api.crowdin.com/api/project/%s/download/all.zip?key=%s' % (projectname, key),
+        'wget', 'https://api.crowdin.com/api/project/%s/download/all.zip?key=%s' % (project_name, key),
         '-O', zip_path
     ])
 
