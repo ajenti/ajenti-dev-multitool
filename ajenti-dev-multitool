@@ -76,7 +76,7 @@ def run_build(plugin, cache_enabled):
     def set_cached(name, content):
         open(os.path.join(cache_path, get_hash(name)), 'w').write(content)
 
-    resources = yaml.load(open(os.path.join(plugin, 'plugin.yml')))['resources']
+    resources = yaml.load(open(os.path.join(plugin, 'plugin.yml')), Loader=yaml.Loader)['resources']
 
     if not resources:
         return
@@ -171,7 +171,7 @@ def run_build(plugin, cache_enabled):
 
 
 def run_setuptools(plugin, cmd):
-    info = yaml.load(open(os.path.join(plugin, 'plugin.yml')))
+    info = yaml.load(open(os.path.join(plugin, 'plugin.yml')), Loader=yaml.Loader)
     info['pypi_name'] = info['name']
     if 'demo_' in plugin:
         return
