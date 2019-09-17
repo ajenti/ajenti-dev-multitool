@@ -545,17 +545,18 @@ def usage():
 Usage: %s [options]
 
 Plugin commands (these operate on all plugins found within current directory)
-    --new-plugin '<some-name>' - Creates a new plugin boilerplate in current directory
-    --run                      - Run Ajenti with plugins from the current directory
-    --run-dev                  - Run Ajenti in dev mode with plugins from the current directory
-    --bower '<cmdline>'        - Run Bower, e.g. --bower install
-    --build                    - Compile resources
-    --rebuild                  - Force recompile resources
-    --setuppy '<args>'         - Run a setuptools build
-    --bump                     - Bump plugin's version
-    --find-outdated            - Find plugins that have unpublished changes
-    --xgettext                 - Extracts localizable strings
-    --msgfmt                   - Compiles translated localizable strings
+    --new-plugin '<some-name>'      - Creates a new plugin boilerplate in current directory
+    --run                           - Run Ajenti with plugins from the current directory
+    --run-dev                       - Run Ajenti in dev mode with plugins from the current directory
+    --run-dev-loglevel '<level>'    - Run Ajenti in dev mode with plugins from the current directory with log level : debug, info, warning or error ( default : debug )
+    --bower '<cmdline>'             - Run Bower, e.g. --bower install
+    --build                         - Compile resources
+    --rebuild                       - Force recompile resources
+    --setuppy '<args>'              - Run a setuptools build
+    --bump                          - Bump plugin's version
+    --find-outdated                 - Find plugins that have unpublished changes
+    --xgettext                      - Extracts localizable strings
+    --msgfmt                        - Compiles translated localizable strings
     """ % sys.argv[0])
 
 
@@ -570,6 +571,7 @@ if __name__ == '__main__':
             [
                 'run',
                 'run-dev',
+                'run-dev-loglevel=',
                 'bower=',
                 'build',
                 'rebuild',
@@ -597,6 +599,8 @@ if __name__ == '__main__':
             ]
             if option == '--run-dev':
                 cmd += ['--dev']
+            elif option == '--run-dev-loglevel':
+                cmd += ['--log', argument]
             try:
                 subprocess.call(cmd)
             except KeyboardInterrupt:
