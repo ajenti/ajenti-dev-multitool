@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='ajenti-dev-multitool',
-    version='1.1.8',
+    version='1.1.10',
     install_requires=[
         'coloredlogs',
         'pyyaml',
