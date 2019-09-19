@@ -545,17 +545,19 @@ def usage():
 Usage: %s [options]
 
 Plugin commands (these operate on all plugins found within current directory)
-    --new-plugin '<some-name>' - Creates a new plugin boilerplate in current directory
-    --run                      - Run Ajenti with plugins from the current directory
-    --run-dev                  - Run Ajenti in dev mode with plugins from the current directory
-    --bower '<cmdline>'        - Run Bower, e.g. --bower install
-    --build                    - Compile resources
-    --rebuild                  - Force recompile resources
-    --setuppy '<args>'         - Run a setuptools build
-    --bump                     - Bump plugin's version
-    --find-outdated            - Find plugins that have unpublished changes
-    --xgettext                 - Extracts localizable strings
-    --msgfmt                   - Compiles translated localizable strings
+    --new-plugin '<some-name>'      - Creates a new plugin boilerplate in current directory
+    --run                           - Run Ajenti with plugins from the current directory
+    --run-dev                       - Run Ajenti in dev mode with plugins from the current directory
+    --log-level '<level>'           - Fix the log level : debug, info, warning or error ( default : debug )
+                                      Must be specified before the run command.
+    --bower '<cmdline>'             - Run Bower, e.g. --bower install
+    --build                         - Compile resources
+    --rebuild                       - Force recompile resources
+    --setuppy '<args>'              - Run a setuptools build
+    --bump                          - Bump plugin's version
+    --find-outdated                 - Find plugins that have unpublished changes
+    --xgettext                      - Extracts localizable strings
+    --msgfmt                        - Compiles translated localizable strings
     """ % sys.argv[0])
 
 
@@ -570,6 +572,7 @@ if __name__ == '__main__':
             [
                 'run',
                 'run-dev',
+                'run-dev-loglevel=',
                 'bower=',
                 'build',
                 'rebuild',
@@ -582,6 +585,7 @@ if __name__ == '__main__':
                 'push-crowdin',
                 'pull-crowdin',
                 'new-plugin=',
+                'log-level=',
             ]
         )
     except getopt.GetoptError as e:
@@ -589,14 +593,20 @@ if __name__ == '__main__':
         usage()
         sys.exit(2)
 
+    cmd = [
+            'ajenti-panel',
+            '--autologin', '--stock-plugins', '--plugins', '.'
+    ]
+    log_level = False
+
     for option, argument in opts:
         if option.startswith('--run'):
-            cmd = [
-                'ajenti-panel',
-                '-v', '--autologin', '--stock-plugins', '--plugins', '.'
-            ]
             if option == '--run-dev':
-                cmd += ['--dev']
+                if not log_level:
+                    cmd += ['-v', '--dev']
+                else:
+                    # dev option must be inserted before log-level
+                    cmd.insert(-2,'--dev')
             try:
                 subprocess.call(cmd)
             except KeyboardInterrupt:
@@ -651,6 +661,9 @@ if __name__ == '__main__':
         elif option == '--new-plugin':
             new_plugin(argument)
             sys.exit(0)
+        elif option == '--log-level':
+            cmd += ['--log', argument]
+            log_level = True
 
     usage()
     sys.exit(2)
