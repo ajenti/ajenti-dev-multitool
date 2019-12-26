@@ -63,7 +63,6 @@ def run_build(plugin, cache_enabled):
         os.makedirs(cache_path)
 
     def get_hash(name):
-        print('#'*50, name)
         return hashlib.sha512(name.encode('utf-8')).hexdigest()
 
     def get_cached(name):
