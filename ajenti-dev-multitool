@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import coloredlogs
 import getopt
 import gevent
@@ -63,7 +63,7 @@ def run_build(plugin, cache_enabled):
         os.makedirs(cache_path)
 
     def get_hash(name):
-        return hashlib.sha512(name).hexdigest()
+        return hashlib.sha512(name.encode('utf-8')).hexdigest()
 
     def get_cached(name):
         if os.path.exists(os.path.join(cache_path, get_hash(name))):
@@ -100,7 +100,7 @@ def run_build(plugin, cache_enabled):
             })
 
     for resource in resources:
-        if isinstance(resource, basestring):
+        if isinstance(resource, str):
             resource = {'path': resource}
 
         path = os.path.join(plugin, resource['path'])
@@ -136,7 +136,7 @@ def run_build(plugin, cache_enabled):
         sys.exit(1)
 
     for resource in resources:
-        if isinstance(resource, basestring):
+        if isinstance(resource, str):
             resource = {'path': resource}
 
         path = os.path.join(plugin, resource['path'])
@@ -169,7 +169,7 @@ def run_build(plugin, cache_enabled):
         'all.vendor.js': all_vendor_js,
         'all.vendor.css': all_vendor_css,
     }
-    for (k, v) in content_map.iteritems():
+    for (k, v) in content_map.items():
         path = os.path.join(plugin, 'resources/build/' + k)
         with open(path, 'w') as f:
             f.write(v)
