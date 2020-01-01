@@ -74,7 +74,7 @@ def run_build(plugin, cache_enabled):
             return os.stat(os.path.join(cache_path, get_hash(name))).st_mtime
 
     def set_cached(name, content):
-        open(os.path.join(cache_path, get_hash(name)), 'w').write(content)
+        open(os.path.join(cache_path, get_hash(name)), 'w').write(content.decode())
 
     resources = yaml.load(open(os.path.join(plugin, 'plugin.yml')), Loader=yaml.Loader)['resources']
 
@@ -92,7 +92,7 @@ def run_build(plugin, cache_enabled):
 
     def worker(path, args):
         try:
-            set_cached(path, subprocess.check_output(args, stderr=subprocess.STDOUT) + '\n')
+            set_cached(path, subprocess.check_output(args, stderr=subprocess.STDOUT) + b'\n')
         except subprocess.CalledProcessError as e:
             errors.append({
                 'path': path,
@@ -456,7 +456,7 @@ def run_pull_crowdin(plugins):
         if lang == 'ajenti':
             continue
         logging.info(' -> processing %s', lang)
-        for name, plugin in map.iteritems():
+        for name, plugin in map.items():
             zip_po_path = os.path.join(dir, lang, '2.0', name + '.po')
             if os.path.exists(zip_po_path):
                 locale_path = os.path.join(plugin, 'locale', lang, 'LC_MESSAGES')
