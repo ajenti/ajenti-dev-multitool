@@ -1,10 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from setuptools import setup
 
 
 setup(
     name='ajenti-dev-multitool',
     version='1.1.8',
+    python_requires='>=3',
     install_requires=[
         'coloredlogs',
         'pyyaml',
