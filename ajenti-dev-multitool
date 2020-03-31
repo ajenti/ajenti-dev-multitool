@@ -194,7 +194,7 @@ def run_setuptools(plugin, cmd):
     shutil.copy(os.path.join(plugin, 'requirements.txt'), workspace)
 
     setuppy = '''
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from setuptools import setup, find_packages
 
 import os
@@ -204,6 +204,7 @@ __requires = filter(None, open('requirements.txt').read().splitlines())
 setup(
     name='ajenti.plugin.%(pypi_name)s',
     version='%(version)s',
+    python_requires='>=3',
     install_requires=__requires,
     description='%(title)s',
     long_description='A %(title)s plugin for Ajenti panel',
