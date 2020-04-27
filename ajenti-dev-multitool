@@ -343,7 +343,7 @@ def run_xgettext(plugin):
             continue
         for f in filenames:
             path = os.path.join(dirpath, f)
-            if f.endswith(('.coffee', '.js', '.ts')):
+            if f.endswith(('.coffee', '.js', '.ts', '.es')):
                 logging.info(' -> (js) %s' % path)
                 subprocess.check_call([
                     'xgettext',
