@@ -199,7 +199,7 @@ from setuptools import setup, find_packages
 
 import os
 
-__requires = filter(None, open('requirements.txt').read().splitlines())
+__requires = [dep.split('#')[0].strip() for dep in filter(None, open('requirements.txt').read().splitlines())] 
 
 setup(
     name='ajenti.plugin.%(pypi_name)s',
