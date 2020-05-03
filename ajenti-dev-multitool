@@ -232,7 +232,7 @@ include requirements.txt
 
     if 'pre_build' in info:
         logging.info('  -> running pre-build script')
-        f = tempfile.NamedTemporaryFile(delete=False)
+        f = tempfile.NamedTemporaryFile(delete=False, mode='w')
         try:
             f.write(info['pre_build'])
             f.close()
