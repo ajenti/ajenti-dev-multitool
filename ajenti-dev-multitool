@@ -242,7 +242,7 @@ include requirements.txt
 
     logging.info('  -> setup.py %s', cmd)
     try:
-        subprocess.check_output('python setup.py %s' % cmd, cwd=workspace, shell=True)
+        subprocess.check_output('python3 setup.py %s' % cmd, cwd=workspace, shell=True)
     except subprocess.CalledProcessError as e:
         logging.error('Output: %s', e.output)
         logging.error('setup.py failed for %s, code %s', plugin, e.returncode)
