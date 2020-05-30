@@ -61,11 +61,6 @@ def run_npm_install(path):
     if code != 0:
         logging.error('Npm failed for %s' % path)
 
-    src = os.path.join(path, 'node_modules')
-    dst = os.path.join(path, 'resources/vendor')
-    shutil.rmtree(dst)
-    shutil.move(src, dst)
-
 
 def run_build(plugin, cache_enabled):
     babel_preset = '/usr/lib/node_modules/babel-preset-es2015'
@@ -159,7 +154,7 @@ def run_build(plugin, cache_enabled):
 
         path = os.path.join(plugin, resource['path'])
 
-        if 'vendor/' in resource['path']:
+        if 'vendor/' in resource['path'] or 'node_modules/' in resources['path']:
             if resource['path'].endswith('.js'):
                 logging.debug('Including %s' % path)
                 all_vendor_js += open(path).read() + '\n'
@@ -357,7 +352,7 @@ def run_xgettext(plugin):
     ])
 
     for (dirpath, dirnames, filenames) in os.walk(plugin, followlinks=True):
-        if 'vendor' in dirpath or 'build' in dirpath:
+        if 'vendor' in dirpath or 'build' in dirpath or 'node_modules' in dirpath:
             continue
         for f in filenames:
             path = os.path.join(dirpath, f)
