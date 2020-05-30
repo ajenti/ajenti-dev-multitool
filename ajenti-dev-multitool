@@ -49,6 +49,24 @@ def run_bower(path, cmdline):
     os.unlink(bower_rc)
 
 
+def run_npm_install(path):
+    package_json = os.path.join(path, 'package.json')
+
+    if not os.path.exists(package_json):
+        logging.warn('Plugin at %s has no package.json' % path)
+        return
+
+    logging.info('Running npm install in %s' % (path))
+    code = subprocess.call('npm --loglevel=verbose install', shell=True, cwd=path)
+    if code != 0:
+        logging.error('Npm failed for %s' % path)
+
+    src = os.path.join(path, 'node_modules')
+    dst = os.path.join(path, 'resources/vendor')
+    shutil.rmtree(dst)
+    shutil.move(src, dst)
+
+
 def run_build(plugin, cache_enabled):
     babel_preset = '/usr/lib/node_modules/babel-preset-es2015'
     if not os.path.isdir(babel_preset):
@@ -558,6 +576,7 @@ Plugin commands (these operate on all plugins found within current directory)
     --log-level '<level>'           - Fix the log level : debug, info, warning or error ( default : debug )
                                       Must be specified before the run command.
     --bower '<cmdline>'             - Run Bower, e.g. --bower install
+    --npm                           - Run npm install in each plugin directory discovered
     --build                         - Compile resources
     --rebuild                       - Force recompile resources
     --setuppy '<args>'              - Run a setuptools build
@@ -581,6 +600,7 @@ if __name__ == '__main__':
                 'run-dev',
                 'run-dev-loglevel=',
                 'bower=',
+                'npm',
                 'build',
                 'rebuild',
                 'setuppy=',
@@ -622,6 +642,10 @@ if __name__ == '__main__':
         if option == '--bower':
             for plugin in find_plugins():
                 run_bower(plugin, argument)
+            sys.exit(0)
+        if option == '--npm':
+            for plugin in find_plugins():
+                run_npm_install(plugin)
             sys.exit(0)
         elif option == '--build':
             for plugin in find_plugins():
