@@ -33,7 +33,7 @@ def run_bower(path, cmdline):
     bower_rc = os.path.join(path, '.bowerrc')
 
     if not os.path.exists(bower_json):
-        logging.warn('Plugin at %s has no bower.json' % path)
+        logging.warning('Plugin at %s has no bower.json' % path)
         return
 
     with open(bower_rc, 'w') as f:
@@ -53,7 +53,7 @@ def run_npm_install(path):
     package_json = os.path.join(path, 'package.json')
 
     if not os.path.exists(package_json):
-        logging.warn('Plugin at %s has no package.json' % path)
+        logging.warning('Plugin at %s has no package.json' % path)
         return
 
     logging.info('Running npm install in %s' % (path))
@@ -150,7 +150,7 @@ def run_build(plugin, cache_enabled):
         for error in errors:
             logging.error(' * %s' % error['path'])
             for line in error['output'].splitlines():
-                logging.warn(line)
+                logging.warning(line)
         sys.exit(1)
 
     for resource in resources:
@@ -300,7 +300,7 @@ def run_bump(plugin):
             f.write(output)
         logging.info('Bumped %s to %s.%s', plugin, prefix.split(':')[1].strip(" '"), counter)
     else:
-        logging.warn('Could not find version info for %s', plugin)
+        logging.warning('Could not find version info for %s', plugin)
 
 
 def run_find_outdated(plugin):
@@ -325,7 +325,7 @@ def run_find_outdated(plugin):
             last_changed = max(last_changed, os.stat(os.path.join(d, f)).st_mtime)
 
     if last_changed > last_upload + 10:
-        logging.warn('Plugin %s has unpublished changes', plugin)
+        logging.warning('Plugin %s has unpublished changes', plugin)
         return True
 
 
