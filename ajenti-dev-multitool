@@ -33,7 +33,7 @@ def run_bower(path, cmdline):
     bower_rc = os.path.join(path, '.bowerrc')
 
     if not os.path.exists(bower_json):
-        logging.warn('Plugin at %s has no bower.json' % path)
+        logging.warning('Plugin at %s has no bower.json' % path)
         return
 
     with open(bower_rc, 'w') as f:
@@ -47,6 +47,19 @@ def run_bower(path, cmdline):
     if code != 0:
         logging.error('Bower failed for %s' % path)
     os.unlink(bower_rc)
+
+
+def run_npm_install(path):
+    package_json = os.path.join(path, 'package.json')
+
+    if not os.path.exists(package_json):
+        logging.warning('Plugin at %s has no package.json' % path)
+        return
+
+    logging.info('Running npm install in %s' % (path))
+    code = subprocess.call('npm --loglevel=verbose install', shell=True, cwd=path)
+    if code != 0:
+        logging.error('Npm failed for %s' % path)
 
 
 def run_build(plugin, cache_enabled):
@@ -132,7 +145,7 @@ def run_build(plugin, cache_enabled):
         for error in errors:
             logging.error(' * %s' % error['path'])
             for line in error['output'].splitlines():
-                logging.warn(line)
+                logging.warning(line)
         sys.exit(1)
 
     for resource in resources:
@@ -141,7 +154,7 @@ def run_build(plugin, cache_enabled):
 
         path = os.path.join(plugin, resource['path'])
 
-        if 'vendor/' in resource['path']:
+        if 'vendor/' in resource['path'] or 'node_modules/' in resources['path']:
             if resource['path'].endswith('.js'):
                 logging.debug('Including %s' % path)
                 all_vendor_js += open(path).read() + '\n'
@@ -282,7 +295,7 @@ def run_bump(plugin):
             f.write(output)
         logging.info('Bumped %s to %s.%s', plugin, prefix.split(':')[1].strip(" '"), counter)
     else:
-        logging.warn('Could not find version info for %s', plugin)
+        logging.warning('Could not find version info for %s', plugin)
 
 
 def run_find_outdated(plugin):
@@ -307,7 +320,7 @@ def run_find_outdated(plugin):
             last_changed = max(last_changed, os.stat(os.path.join(d, f)).st_mtime)
 
     if last_changed > last_upload + 10:
-        logging.warn('Plugin %s has unpublished changes', plugin)
+        logging.warning('Plugin %s has unpublished changes', plugin)
         return True
 
 
@@ -339,7 +352,7 @@ def run_xgettext(plugin):
     ])
 
     for (dirpath, dirnames, filenames) in os.walk(plugin, followlinks=True):
-        if 'vendor' in dirpath or 'build' in dirpath:
+        if 'vendor' in dirpath or 'build' in dirpath or 'node_modules' in dirpath:
             continue
         for f in filenames:
             path = os.path.join(dirpath, f)
@@ -558,6 +571,7 @@ Plugin commands (these operate on all plugins found within current directory)
     --log-level '<level>'           - Fix the log level : debug, info, warning or error ( default : debug )
                                       Must be specified before the run command.
     --bower '<cmdline>'             - Run Bower, e.g. --bower install
+    --npm                           - Run npm install in each plugin directory discovered
     --build                         - Compile resources
     --rebuild                       - Force recompile resources
     --setuppy '<args>'              - Run a setuptools build
@@ -581,6 +595,7 @@ if __name__ == '__main__':
                 'run-dev',
                 'run-dev-loglevel=',
                 'bower=',
+                'npm',
                 'build',
                 'rebuild',
                 'setuppy=',
@@ -622,6 +637,10 @@ if __name__ == '__main__':
         if option == '--bower':
             for plugin in find_plugins():
                 run_bower(plugin, argument)
+            sys.exit(0)
+        if option == '--npm':
+            for plugin in find_plugins():
+                run_npm_install(plugin)
             sys.exit(0)
         elif option == '--build':
             for plugin in find_plugins():

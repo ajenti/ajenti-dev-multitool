@@ -1,0 +1,18 @@
+Ajenti-dev-multitool 1.1.14 - Dev
+
+- Add support for npm install
+
+Ajenti-dev-multitool 1.1.13 - 03/05/2020
+
+- Fix tempfile calls for Python 3.
+
+Ajenti-dev-multitool 1.1.12 - 02/05/2020
+
+- Fix requirements inclusion,
+- Add ES-scripts to translations,
+- Switch to Python 3.
+
+Ajenti-dev-multitool 1.1.11 - 26/11/2019
+
+- Support for typescript,
+- Add log level option to run-dev.
