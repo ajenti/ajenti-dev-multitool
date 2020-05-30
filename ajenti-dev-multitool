@@ -154,7 +154,7 @@ def run_build(plugin, cache_enabled):
 
         path = os.path.join(plugin, resource['path'])
 
-        if 'vendor/' in resource['path'] or 'node_modules/' in resources['path']:
+        if 'vendor/' in resource['path'] or 'node_modules/' in resource['path']:
             if resource['path'].endswith('.js'):
                 logging.debug('Including %s' % path)
                 all_vendor_js += open(path).read() + '\n'
