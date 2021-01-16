@@ -14,8 +14,11 @@ import time
 import yaml
 from gevent import subprocess
 
+# Ignore ajenti specific python objects
 yaml.add_multi_constructor('tag:yaml.org,2002:python/object:', lambda a, b, c: None)
 
+for dep in ['Plugin', 'Binary', 'OptionalPlugin', 'File', 'Module']:
+    yaml.add_constructor(f'!{dep}Dependency', lambda a, b: None, Loader=yaml.SafeLoader)
 
 def find_plugins():
     if os.path.exists('__init__.py'):
@@ -89,7 +92,7 @@ def run_build(plugin, cache_enabled):
     def set_cached(name, content):
         open(os.path.join(cache_path, get_hash(name)), 'w').write(content.decode())
 
-    resources = yaml.load(open(os.path.join(plugin, 'plugin.yml')), Loader=yaml.Loader)['resources']
+    resources = yaml.load(open(os.path.join(plugin, 'plugin.yml')), Loader=yaml.SafeLoader)['resources']
 
     if not resources:
         return
@@ -190,7 +193,7 @@ def run_build(plugin, cache_enabled):
 
 
 def run_setuptools(plugin, cmd):
-    info = yaml.load(open(os.path.join(plugin, 'plugin.yml')), Loader=yaml.Loader)
+    info = yaml.load(open(os.path.join(plugin, 'plugin.yml')), Loader=yaml.SafeLoader)
     info['pypi_name'] = info['name']
     if 'demo_' in plugin:
         return
