@@ -1,3 +1,9 @@
+Ajenti-dev-multitool 1.2.0 - 17/03/2022
+
+- remove `bower`, replace `npm`with yarn
+- rename the option `--build` to `--build-frontend`
+- adjust the commands to the new structure( ignore the obsolete plugins, build `ngx-ajenti` before building plugins
+
 Ajenti-dev-multitool 1.1.14 - Dev
 
 - Add support for npm install
