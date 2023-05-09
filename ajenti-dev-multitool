@@ -399,6 +399,14 @@ def run_xgettext(plugin):
                     f.write(open(pot_path).read())
 
 
+def _get_crowdin_projectid(project_identifier, headers):
+    resp = json.loads(requests.get(f"{CROWDIN_API_BASEURL}/projects", headers=headers).content)
+
+    for project in resp['data']:
+        if project['data']['identifier'] == project_identifier:
+            return project['data']['id']
+    return None
+
 def run_push_crowdin(plugins, add=False):
     dir = tempfile.mkdtemp()
     logging.info('Working in %s' % dir)
@@ -442,9 +450,9 @@ def run_pull_crowdin(plugins):
     try:
         crowdin_token = open('.crowdin.token').read().strip().split('\n')
         if len(crowdin_token) == 2:
-            project_name = crowdin_token[1]
+            project_identifier = crowdin_token[1]
         else:
-            project_name = 'ajenti'
+            project_identifier = 'ajenti'
         token = crowdin_token[0]
     except Exception as e:
         logging.error('Could not read ".crowdin.key": %s', e)
@@ -457,7 +465,13 @@ def run_pull_crowdin(plugins):
     logging.info('Requesting build')
 
     headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-    resp = requests.post(f"{CROWDIN_API_BASEURL}/projects/18127/translations/builds", data='{}', headers=headers)
+
+    projectId = _get_crowdin_projectid(project_identifier, headers)
+    if projectId is None:
+        logging.error("Project id not found")
+        return
+
+    resp = requests.post(f"{CROWDIN_API_BASEURL}/projects/{projectId}/translations/builds", data='{}', headers=headers)
     content = json.loads(resp.content)
 
     if 200 <= resp.status_code < 300:
@@ -468,13 +482,13 @@ def run_pull_crowdin(plugins):
     progress = 0
     while progress < 100:
         sleep(2)
-        resp = json.loads(requests.get(f"{CROWDIN_API_BASEURL}/projects/18127/translations/builds/{buildId}", headers=headers).content)
+        resp = json.loads(requests.get(f"{CROWDIN_API_BASEURL}/projects/{projectId}/translations/builds/{buildId}", headers=headers).content)
         progress = resp['data']['progress']
         logging.info(f"Build processing {progress}%")
 
     logging.info('Downloading')
 
-    resp = requests.get(f"{CROWDIN_API_BASEURL}/projects/18127/translations/builds/{buildId}/download", headers=headers)
+    resp = requests.get(f"{CROWDIN_API_BASEURL}/projects/{projectId}/translations/builds/{buildId}/download", headers=headers)
     download_url = json.loads(resp.content)['data']['url']
 
     zip_path = os.path.join(dir, 'all.zip')
