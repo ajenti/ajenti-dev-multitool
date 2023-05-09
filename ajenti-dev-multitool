@@ -407,6 +407,7 @@ def _get_crowdin_projectid(project_identifier, headers):
             return project['data']['id']
     return None
 
+
 def run_push_crowdin(plugins, add=False):
     dir = tempfile.mkdtemp()
     logging.info('Working in %s' % dir)
@@ -455,7 +456,7 @@ def run_pull_crowdin(plugins):
             project_identifier = 'ajenti'
         token = crowdin_token[0]
     except Exception as e:
-        logging.error('Could not read ".crowdin.key": %s', e)
+        logging.error(f'Could not read ".crowdin.token": {e}')
         sys.exit(1)
 
     map = dict((os.path.split(p)[1], p) for p in plugins)
