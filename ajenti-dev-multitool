@@ -12,7 +12,10 @@ import sys
 import tempfile
 import time
 import yaml
-from gevent import subprocess
+import requests
+from gevent import subprocess, sleep
+
+CROWDIN_API_BASEURL = "https://api.crowdin.com/api/v2"
 
 # Ignore ajenti specific python objects
 yaml.add_multi_constructor('tag:yaml.org,2002:python/object:', lambda a, b, c: None)
@@ -437,12 +440,12 @@ def run_push_crowdin(plugins, add=False):
 
 def run_pull_crowdin(plugins):
     try:
-        crowdin_key = open('.crowdin.key').read().strip().split('\n')
-        if len(crowdin_key) == 2:
-            project_name = crowdin_key[1]
+        crowdin_token = open('.crowdin.token').read().strip().split('\n')
+        if len(crowdin_token) == 2:
+            project_name = crowdin_token[1]
         else:
             project_name = 'ajenti'
-        key = crowdin_key[0]
+        token = crowdin_token[0]
     except Exception as e:
         logging.error('Could not read ".crowdin.key": %s', e)
         sys.exit(1)
@@ -452,14 +455,31 @@ def run_pull_crowdin(plugins):
     logging.info('Working in %s' % dir)
 
     logging.info('Requesting build')
-    subprocess.check_call([
-        'curl', 'https://api.crowdin.com/api/project/%s/export?key=%s' % (project_name, key)
-    ])
+
+    headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+    resp = requests.post(f"{CROWDIN_API_BASEURL}/projects/18127/translations/builds", data='{}', headers=headers)
+    content = json.loads(resp.content)
+
+    if 200 <= resp.status_code < 300:
+        buildId = content['data']['id']
+    else:
+        logging.error(content['error']['message'])
+
+    progress = 0
+    while progress < 100:
+        sleep(2)
+        resp = json.loads(requests.get(f"{CROWDIN_API_BASEURL}/projects/18127/translations/builds/{buildId}", headers=headers).content)
+        progress = resp['data']['progress']
+        logging.info(f"Build processing {progress}%")
 
     logging.info('Downloading')
+
+    resp = requests.get(f"{CROWDIN_API_BASEURL}/projects/18127/translations/builds/{buildId}/download", headers=headers)
+    download_url = json.loads(resp.content)['data']['url']
+
     zip_path = os.path.join(dir, 'all.zip')
     subprocess.check_call([
-        'wget', 'https://api.crowdin.com/api/project/%s/download/all.zip?key=%s' % (project_name, key),
+        'wget', download_url,
         '-O', zip_path
     ])
 
