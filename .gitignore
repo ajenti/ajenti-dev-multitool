@@ -2,6 +2,7 @@
 *~
 MANIFEST
 *.egg*
+.idea/*
 build/*
 dist/*
 *.sublime-*
