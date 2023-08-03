@@ -398,7 +398,6 @@ def run_xgettext(plugin):
                 with open(po_path, 'w') as f:
                     f.write(open(pot_path).read())
 
-
 def _get_crowdin_projectid(project_identifier, headers):
     resp = json.loads(requests.get(f"{CROWDIN_API_BASEURL}/projects", headers=headers).content)
 
@@ -406,6 +405,15 @@ def _get_crowdin_projectid(project_identifier, headers):
         if project['data']['identifier'] == project_identifier:
             return project['data']['id']
     return None
+
+def _get_crowdin_fileId(project_id, headers):
+    filesId = {}
+    resp = requests.get(f"{CROWDIN_API_BASEURL}/projects/{project_id}/files?limit=100", headers=headers)
+    for f in json.loads(resp.content)['data']:
+        # Only managing files under the directory 2.0
+        if f['data']['path'].startswith('/2.0/'):
+            filesId[f['data']['name']] = f['data']['id']
+    return filesId
 
 def _get_crowdin_token():
     try:
@@ -418,7 +426,6 @@ def _get_crowdin_token():
     except Exception as e:
         logging.error(f'Could not read ".crowdin.token": {e}')
         sys.exit(1)
-
 
 def run_push_crowdin(plugins, add=False):
     dir = tempfile.mkdtemp()
@@ -434,21 +441,47 @@ def run_push_crowdin(plugins, add=False):
                 f.write(open(pot_path).read())
 
     token, project_identifier = _get_crowdin_token()
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json'
+    }
+
+    projectId = _get_crowdin_projectid(project_identifier, headers)
+    if projectId is None:
+        logging.error("Project id not found")
+        return
+
+    # Dict like {'filename': id}
+    filesId = _get_crowdin_fileId(projectId, headers)
 
     # Uploading
     for file in os.listdir(dir):
-        logging.info(' :: uploading %s' % file)
-        subprocess.check_call([
-            'curl', '-F', 'files[/2.0/%s]=@%s' % (
-                file,
-                os.path.join(dir, file),
-            ),
-            'https://api.crowdin.com/api/project/%s/%s?key=%s' % (
-                project_identifier,
-                'add-file' if add else 'update-file',
-                token
-            )
-        ])
+        logging.info(f' :: uploading {file}')
+
+        # First need to create a storage through the API
+        headers['Content-Type'] = 'application/text-plain'
+        headers['Crowdin-API-FileName'] = f'storage-{file}'
+
+        with open(os.path.join(dir, file), 'r') as f:
+            content = f.read()
+
+        resp = requests.post(f"{CROWDIN_API_BASEURL}/storages", data=content, headers=headers)
+        # We need the storage ID for later
+        storageId = json.loads(resp.content)['data']['id']
+
+        # Finally update file with the content of the storage
+        headers['Content-Type'] = 'application/json'
+        fileId = filesId.get(file, None)
+        if fileId:
+            data = json.dumps({'storageId': storageId, 'updateOption':"keep_translations_and_approvals"})
+            logging.debug(f"Updating file {file} on Crowdin")
+            requests.put(f"{CROWDIN_API_BASEURL}/projects/{projectId}/files/{fileId}", data= data, headers=headers)
+        else:
+            logging.warning(f"Could not find file {file} on Crowdin")
+            if add:
+                logging.debug(f"Uploading new file {file} to Crowdin")
+                data = json.dumps({'name': file, 'storageId': storageId, 'directoryId': 92})
+                requests.post(f"{CROWDIN_API_BASEURL}/projects/{projectId}/files", data= data, headers=headers)
 
     shutil.rmtree(dir)
 
