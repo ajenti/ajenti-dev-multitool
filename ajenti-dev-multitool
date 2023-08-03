@@ -407,10 +407,24 @@ def _get_crowdin_projectid(project_identifier, headers):
             return project['data']['id']
     return None
 
+def _get_crowdin_token():
+    try:
+        crowdin_token = open('.crowdin.token').read().strip().split('\n')
+        if len(crowdin_token) == 2:
+            project_identifier = crowdin_token[1]
+        else:
+            project_identifier = 'ajenti'
+        return crowdin_token[0], project_identifier
+    except Exception as e:
+        logging.error(f'Could not read ".crowdin.token": {e}')
+        sys.exit(1)
+
 
 def run_push_crowdin(plugins, add=False):
     dir = tempfile.mkdtemp()
-    logging.info('Working in %s' % dir)
+    logging.info(f'Working in {dir}')
+
+    # Generating .po files
     for plugin in plugins:
         locale_path = os.path.join(plugin, 'locale')
         pot_path = os.path.join(locale_path, 'app.pot')
@@ -419,17 +433,9 @@ def run_push_crowdin(plugins, add=False):
             with open(os.path.join(dir, os.path.split(plugin)[1] + '.po'), 'w') as f:
                 f.write(open(pot_path).read())
 
-    try:
-        crowdin_key = open('.crowdin.key').read().strip().split('\n')
-        if len(crowdin_key) == 2:
-            project_name = crowdin_key[1]
-        else:
-            project_name = 'ajenti'
-        key = crowdin_key[0]
-    except Exception as e:
-        logging.error('Could not read ".crowdin.key": %s', e)
-        sys.exit(1)
+    token, project_identifier = _get_crowdin_token()
 
+    # Uploading
     for file in os.listdir(dir):
         logging.info(' :: uploading %s' % file)
         subprocess.check_call([
@@ -438,9 +444,9 @@ def run_push_crowdin(plugins, add=False):
                 os.path.join(dir, file),
             ),
             'https://api.crowdin.com/api/project/%s/%s?key=%s' % (
-                project_name,
+                project_identifier,
                 'add-file' if add else 'update-file',
-                key
+                token
             )
         ])
 
@@ -448,16 +454,8 @@ def run_push_crowdin(plugins, add=False):
 
 
 def run_pull_crowdin(plugins):
-    try:
-        crowdin_token = open('.crowdin.token').read().strip().split('\n')
-        if len(crowdin_token) == 2:
-            project_identifier = crowdin_token[1]
-        else:
-            project_identifier = 'ajenti'
-        token = crowdin_token[0]
-    except Exception as e:
-        logging.error(f'Could not read ".crowdin.token": {e}')
-        sys.exit(1)
+
+    token, project_identifier = _get_crowdin_token()
 
     map = dict((os.path.split(p)[1], p) for p in plugins)
     dir = tempfile.mkdtemp()
