@@ -462,7 +462,7 @@ def run_push_crowdin(plugins, add=False):
         headers['Content-Type'] = 'application/text-plain'
         headers['Crowdin-API-FileName'] = f'storage-{file}'
 
-        with open(os.path.join(dir, file), 'r') as f:
+        with open(os.path.join(dir, file), 'br') as f:
             content = f.read()
 
         resp = requests.post(f"{CROWDIN_API_BASEURL}/storages", data=content, headers=headers)
