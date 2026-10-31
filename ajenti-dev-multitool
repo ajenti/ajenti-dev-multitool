@@ -648,6 +648,9 @@ Plugin commands (these operate on all plugins found within current directory)
     --find-outdated                 - Find plugins that have unpublished changes
     --xgettext                      - Extracts localizable strings
     --msgfmt                        - Compiles translated localizable strings
+    --push-crowdin                  - Upload the source strings (app.pot) of the plugins to Crowdin
+    --add-crowdin                   - Same as --push-crowdin, and create the files missing on Crowdin
+    --pull-crowdin                  - Download the translations from Crowdin
     """ % sys.argv[0])
 
 
