@@ -10,6 +10,7 @@ setup(
         'coloredlogs',
         'pyyaml',
         'gevent',
+        'requests',
     ],
     description='-',
     author='Eugene Pankov',
